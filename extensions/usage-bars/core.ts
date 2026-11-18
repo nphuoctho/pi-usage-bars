@@ -787,7 +787,8 @@ export function parseClaudeExtraWindows(data: any): UsageWindow[] {
   const windows: UsageWindow[] = [];
   for (const l of Array.isArray(data?.limits) ? data.limits : []) {
     const name = l?.scope?.model?.display_name;
-    const used = readPercentCandidate(l?.percent);
+    // limits[].percent is already 0-100 (matches utilization), so no fraction guessing.
+    const used = typeof l?.percent === "number" && l.percent >= 0 && l.percent <= 100 ? l.percent : null;
     if (l?.kind !== "weekly_scoped" || typeof name !== "string" || used === null) continue;
     windows.push({ label: `7 Day (${name})`, used, resetsAt: typeof l.resets_at === "string" ? l.resets_at : undefined });
   }

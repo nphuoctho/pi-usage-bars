@@ -761,3 +761,71 @@ describe("usage-bars-core claude extra windows", () => {
     expect(parseClaudeExtraWindows({})).toEqual([]);
   });
 });
+
+// Shape captured from a real /api/oauth/usage response (values and unrelated fields removed).
+const REAL_CLAUDE_PAYLOAD = {
+  five_hour: { utilization: 10, resets_at: "2026-11-18T12:20:00.612981+00:00" },
+  seven_day: { utilization: 50, resets_at: "2026-11-22T02:00:00.613003+00:00" },
+  seven_day_opus: null,
+  seven_day_sonnet: null,
+  limits: [
+    { kind: "session", group: "session", percent: 10, resets_at: "2026-11-18T12:20:00.612981+00:00", scope: null },
+    { kind: "weekly_all", group: "weekly", percent: 50, resets_at: "2026-11-22T02:00:00.613003+00:00", scope: null },
+    {
+      kind: "weekly_scoped",
+      group: "weekly",
+      percent: 0,
+      resets_at: "2026-11-22T02:00:00+00:00",
+      scope: { model: { id: null, display_name: "Fable" }, surface: null },
+    },
+  ],
+};
+
+describe("usage-bars-core claude real payload and edge cases", () => {
+  it("fetchClaudeUsage parses windows and reset countdowns from the real shape", async () => {
+    const now = Date.parse("2026-11-18T10:00:00Z");
+    const originalNow = Date.now;
+    Date.now = () => now;
+    try {
+      const usage = await fetchClaudeUsage("token", { fetchFn: async () => jsonResponse(200, REAL_CLAUDE_PAYLOAD) });
+      expect(usage.sessionResetsIn).toBe("2h 20m");
+      expect(usage.windows).toEqual([
+        { label: "7 Day (Fable)", used: 0, resetsAt: "2026-11-22T02:00:00+00:00", resetsIn: "3d 16h" },
+      ]);
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+
+  it("falls back to limits[] when five_hour has no resets_at", async () => {
+    const usage = await fetchClaudeUsage("token", {
+      fetchFn: async () =>
+        jsonResponse(200, {
+          ...REAL_CLAUDE_PAYLOAD,
+          five_hour: { utilization: 0, resets_at: null },
+          seven_day: { utilization: 0, resets_at: null },
+        }),
+    });
+    expect(usage.sessionResetsAt).toBe("2026-11-18T12:20:00.612981+00:00");
+    expect(usage.weeklyResetsAt).toBe("2026-11-22T02:00:00.613003+00:00");
+  });
+
+  it("reads limits percent on a 0-100 scale", () => {
+    const mk = (percent: any) => ({ limits: [{ kind: "weekly_scoped", percent, scope: { model: { display_name: "X" } } }] });
+    expect(parseClaudeExtraWindows(mk(0.5))[0]?.used).toBe(0.5);
+    expect(parseClaudeExtraWindows(mk(1))[0]?.used).toBe(1);
+    expect(parseClaudeExtraWindows(mk(null))).toEqual([]);
+    expect(parseClaudeExtraWindows(mk(101))).toEqual([]);
+  });
+
+  it("skips other kinds, missing display_name, and ignores non-string resets_at", () => {
+    const data = {
+      limits: [
+        { kind: "weekly_all", percent: 5, scope: { model: { display_name: "A" } } },
+        { kind: "weekly_scoped", percent: 5, scope: { model: { display_name: null } } },
+        { kind: "weekly_scoped", percent: 5, resets_at: 123, scope: { model: { display_name: "B" } } },
+      ],
+    };
+    expect(parseClaudeExtraWindows(data)).toEqual([{ label: "7 Day (B)", used: 5, resetsAt: undefined }]);
+  });
+});

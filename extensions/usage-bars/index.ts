@@ -114,7 +114,8 @@ class UsageSelectorComponent extends Container implements Focusable {
         this.updateList();
         this.hintText.setText(
           theme.fg("muted", "Only showing providers with credentials. ") +
-            theme.fg("dim", `✓ = active provider · checked ${new Date().toLocaleTimeString()}`),
+            theme.fg("dim", "✓ = active provider" +
+              (Object.values(results).some((r) => r?.stale) ? "" : ` · checked ${new Date().toLocaleTimeString()}`)),
         );
         this.tui.requestRender();
       })
@@ -187,6 +188,7 @@ class UsageSelectorComponent extends Container implements Focusable {
     } else if (item.data.error) {
       this.listContainer.addChild(new Text(indent + t.fg("error", item.data.error), 0, 0));
     } else {
+      const labelWidth = Math.max(9, ...(item.data.windows ?? []).map((w) => w.label.length)) + 1;
       const session = clampPercent(item.data.session);
       const weekly = clampPercent(item.data.weekly);
 
@@ -200,7 +202,7 @@ class UsageSelectorComponent extends Container implements Focusable {
       this.listContainer.addChild(
         new Text(
           indent +
-            t.fg("muted", "Session  ") +
+            t.fg("muted", "Session".padEnd(labelWidth)) +
             this.renderBar(100 - session, colorForPercent(session)) +
             " " +
             t.fg(colorForPercent(session), `${100 - session}% left`.padStart(9)) +
@@ -213,7 +215,7 @@ class UsageSelectorComponent extends Container implements Focusable {
       this.listContainer.addChild(
         new Text(
           indent +
-            t.fg("muted", "Weekly   ") +
+            t.fg("muted", "Weekly".padEnd(labelWidth)) +
             this.renderBar(100 - weekly, colorForPercent(weekly)) +
             " " +
             t.fg(colorForPercent(weekly), `${100 - weekly}% left`.padStart(9)) +
@@ -228,7 +230,7 @@ class UsageSelectorComponent extends Container implements Focusable {
         this.listContainer.addChild(
           new Text(
             indent +
-              t.fg("muted", w.label.padEnd(9)) +
+              t.fg("muted", w.label.padEnd(labelWidth)) +
               " " +
               this.renderBar(100 - used, colorForPercent(used)) +
               " " +
