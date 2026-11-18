@@ -17,6 +17,7 @@ import {
   fetchZaiUsage,
   formatDuration,
   formatResetsAt,
+  parseClaudeExtraWindows,
   parseGoogleQuotaBuckets,
   parseRetryAfterMs,
   pickMostUsedBucket,
@@ -743,5 +744,20 @@ describe("usage-bars-core network fetchers", () => {
     expect(all.zai).toEqual({ session: 55, weekly: 66 });
     expect(all.gemini).toEqual({ session: 80, weekly: 80 });
     expect(all.antigravity).toEqual({ session: 60, weekly: 60 });
+  });
+});
+
+describe("usage-bars-core claude extra windows", () => {
+  it("reads model-scoped weekly limits with their reset time", () => {
+    const data = {
+      limits: [
+        { kind: "session", percent: 8, resets_at: "2030-01-01T00:00:00Z" },
+        { kind: "weekly_scoped", percent: 0, resets_at: "2030-01-02T00:00:00Z", scope: { model: { display_name: "Fable" } } },
+      ],
+    };
+    expect(parseClaudeExtraWindows(data)).toEqual([
+      { label: "7 Day (Fable)", used: 0, resetsAt: "2030-01-02T00:00:00Z" },
+    ]);
+    expect(parseClaudeExtraWindows({})).toEqual([]);
   });
 });

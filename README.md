@@ -1,6 +1,6 @@
 # pi-usage-bars
 
-> **Fork of [ajarellanod/pi-usage-bars](https://github.com/ajarellanod/pi-usage-bars).** Two changes: the `/usage` panel shows the percentage **left** in each window instead of the percentage used, and nothing is shown in the footer. Install with `pi install git:github.com/nphuoctho/pi-usage-bars`.
+> **Fork of [ajarellanod/pi-usage-bars](https://github.com/ajarellanod/pi-usage-bars).** Three changes: the `/usage` panel shows the percentage **left** in each window instead of the percentage used, and nothing is shown in the footer, and `/usage` shows reset countdowns on every window (including 0% / 100% left), extra per-model Claude weekly windows, and a "checked" time. Claude's "reset credit" line is not in the API response, so it is not shown. Install with `pi install git:github.com/nphuoctho/pi-usage-bars`.
 
 
 Usage indicator for **pi**.

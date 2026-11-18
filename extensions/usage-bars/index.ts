@@ -114,7 +114,7 @@ class UsageSelectorComponent extends Container implements Focusable {
         this.updateList();
         this.hintText.setText(
           theme.fg("muted", "Only showing providers with credentials. ") +
-            theme.fg("dim", "✓ = active provider"),
+            theme.fg("dim", `✓ = active provider · checked ${new Date().toLocaleTimeString()}`),
         );
         this.tui.requestRender();
       })
@@ -222,6 +222,23 @@ class UsageSelectorComponent extends Container implements Focusable {
           0,
         ),
       );
+
+      for (const w of item.data.windows ?? []) {
+        const used = clampPercent(w.used);
+        this.listContainer.addChild(
+          new Text(
+            indent +
+              t.fg("muted", w.label.padEnd(9)) +
+              " " +
+              this.renderBar(100 - used, colorForPercent(used)) +
+              " " +
+              t.fg(colorForPercent(used), `${100 - used}% left`.padStart(9)) +
+              (w.resetsIn ? t.fg("dim", `  resets in ${w.resetsIn}`) : ""),
+            0,
+            0,
+          ),
+        );
+      }
 
       if (typeof item.data.extraSpend === "number" && typeof item.data.extraLimit === "number") {
         this.listContainer.addChild(

@@ -13,6 +13,13 @@ export interface AuthData {
   "google-antigravity"?: { access?: string; refresh?: string; projectId?: string; expires?: number };
 }
 
+export interface UsageWindow {
+  label: string;
+  used: number;
+  resetsAt?: string;
+  resetsIn?: string;
+}
+
 export interface UsageData {
   session: number;
   weekly: number;
@@ -22,6 +29,7 @@ export interface UsageData {
   weeklyResetsAt?: string;
   extraSpend?: number;
   extraLimit?: number;
+  windows?: UsageWindow[];
   warning?: string;
   stale?: boolean;
   fetchedAt?: number;
@@ -623,6 +631,7 @@ export function parseGoogleQuotaBuckets(data: any, provider: "gemini" | "antigra
 function hydrateUsageResets(usage: UsageData, nowMs = Date.now()): UsageData {
   return {
     ...usage,
+    windows: usage.windows?.map((w) => ({ ...w, resetsIn: w.resetsAt ? formatResetsAt(w.resetsAt, nowMs) : w.resetsIn })),
     sessionResetsIn: usage.sessionResetsAt ? formatResetsAt(usage.sessionResetsAt, nowMs) : usage.sessionResetsIn,
     weeklyResetsIn: usage.weeklyResetsAt ? formatResetsAt(usage.weeklyResetsAt, nowMs) : usage.weeklyResetsIn,
   };
@@ -638,6 +647,7 @@ function snapshotUsage(usage: UsageData, nowMs = Date.now()): UsageData {
     weeklyResetsIn: usage.weeklyResetsIn,
     extraSpend: usage.extraSpend,
     extraLimit: usage.extraLimit,
+    windows: usage.windows,
     fetchedAt: usage.fetchedAt ?? nowMs,
   };
 }
@@ -750,8 +760,9 @@ async function fetchClaudeUsageAttempt(
     {
       session: readPercentCandidate(data?.five_hour?.utilization) ?? 0,
       weekly: readPercentCandidate(data?.seven_day?.utilization) ?? 0,
-      sessionResetsAt: typeof data?.five_hour?.resets_at === "string" ? data.five_hour.resets_at : undefined,
-      weeklyResetsAt: typeof data?.seven_day?.resets_at === "string" ? data.seven_day.resets_at : undefined,
+      sessionResetsAt: claudeResetsAt(data?.five_hour, data, "session"),
+      weeklyResetsAt: claudeResetsAt(data?.seven_day, data, "weekly_all"),
+      windows: parseClaudeExtraWindows(data),
       fetchedAt: nowMs,
     },
     nowMs,
@@ -763,6 +774,24 @@ async function fetchClaudeUsageAttempt(
   }
 
   return { usage, status: result.status, retryAfterMs };
+}
+
+function claudeResetsAt(window: any, data: any, kind: string): string | undefined {
+  if (typeof window?.resets_at === "string") return window.resets_at;
+  const l = (Array.isArray(data?.limits) ? data.limits : []).find((x: any) => x?.kind === kind);
+  return typeof l?.resets_at === "string" ? l.resets_at : undefined;
+}
+
+/** Extra per-model weekly windows, e.g. limits[] entries scoped to one model family. */
+export function parseClaudeExtraWindows(data: any): UsageWindow[] {
+  const windows: UsageWindow[] = [];
+  for (const l of Array.isArray(data?.limits) ? data.limits : []) {
+    const name = l?.scope?.model?.display_name;
+    const used = readPercentCandidate(l?.percent);
+    if (l?.kind !== "weekly_scoped" || typeof name !== "string" || used === null) continue;
+    windows.push({ label: `7 Day (${name})`, used, resetsAt: typeof l.resets_at === "string" ? l.resets_at : undefined });
+  }
+  return windows;
 }
 
 export async function fetchClaudeUsage(token: string, config: RequestConfig = {}): Promise<UsageData> {
