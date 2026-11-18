@@ -188,7 +188,7 @@ class UsageSelectorComponent extends Container implements Focusable {
     } else if (item.data.error) {
       this.listContainer.addChild(new Text(indent + t.fg("error", item.data.error), 0, 0));
     } else {
-      const labelWidth = Math.max(9, ...(item.data.windows ?? []).map((w) => w.label.length)) + 1;
+      const labelWidth = Math.max(9, ...(item.data.windows ?? []).map((w) => w.label.length + 1));
       const session = clampPercent(item.data.session);
       const weekly = clampPercent(item.data.weekly);
 
@@ -231,7 +231,6 @@ class UsageSelectorComponent extends Container implements Focusable {
           new Text(
             indent +
               t.fg("muted", w.label.padEnd(labelWidth)) +
-              " " +
               this.renderBar(100 - used, colorForPercent(used)) +
               " " +
               t.fg(colorForPercent(used), `${100 - used}% left`.padStart(9)) +
