@@ -164,10 +164,9 @@ class UsageSelectorComponent extends Container implements Focusable {
     this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, this.filteredItems.length - 1));
   }
 
-  private renderBar(pct: number, width = 16): string {
+  private renderBar(pct: number, color = colorForPercent(clampPercent(pct)), width = 16): string {
     const value = clampPercent(pct);
     const filled = Math.round((value / 100) * width);
-    const color = colorForPercent(value);
     const full = "█".repeat(Math.max(0, filled));
     const empty = "░".repeat(Math.max(0, width - filled));
     return this.theme.fg(color, full) + this.theme.fg("dim", empty);
@@ -202,9 +201,9 @@ class UsageSelectorComponent extends Container implements Focusable {
         new Text(
           indent +
             t.fg("muted", "Session  ") +
-            this.renderBar(session) +
+            this.renderBar(100 - session, colorForPercent(session)) +
             " " +
-            t.fg(colorForPercent(session), `${session}%`.padStart(4)) +
+            t.fg(colorForPercent(session), `${100 - session}% left`.padStart(9)) +
             sessionReset,
           0,
           0,
@@ -215,9 +214,9 @@ class UsageSelectorComponent extends Container implements Focusable {
         new Text(
           indent +
             t.fg("muted", "Weekly   ") +
-            this.renderBar(weekly) +
+            this.renderBar(100 - weekly, colorForPercent(weekly)) +
             " " +
-            t.fg(colorForPercent(weekly), `${weekly}%`.padStart(4)) +
+            t.fg(colorForPercent(weekly), `${100 - weekly}% left`.padStart(9)) +
             weeklyReset,
           0,
           0,
@@ -347,6 +346,9 @@ export default function (pi: ExtensionAPI) {
     }
 
     if (!ctx?.hasUI) return;
+    // Fork change: keep usage out of the footer; /usage is the only view.
+    ctx.ui.setStatus(STATUS_KEY, undefined);
+    return;
 
     if (!active) {
       ctx.ui.setStatus(STATUS_KEY, undefined);

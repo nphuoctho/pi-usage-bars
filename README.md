@@ -1,5 +1,8 @@
 # pi-usage-bars
 
+> **Fork of [ajarellanod/pi-usage-bars](https://github.com/ajarellanod/pi-usage-bars).** Two changes: the `/usage` panel shows the percentage **left** in each window instead of the percentage used, and nothing is shown in the footer. Install with `pi install git:github.com/nphuoctho/pi-usage-bars`.
+
+
 Usage indicator for **pi**.
 
 ![Codex footer bar](https://raw.githubusercontent.com/ajarellanod/pi-usage-bars/main/assets/codex.png)
